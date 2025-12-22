@@ -1,25 +1,21 @@
 package telegram
 
 import (
-	"context"
 	"encoding/json"
 	"math/rand"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/panjf2000/ants/v2"
 )
 
 const (
-	telegramSendMessageKey = "telegram:send_message"
-	RetryMaxTimesCount     = 3 //重试最大次数
-	RetryTimeLimitNum      = 2
-	RetryInterval          = 10 //重试间隔时间
+	RetryMaxTimesCount = 3 //重试最大次数
+	RetryTimeLimitNum  = 2
+	RetryInterval      = 10 //重试间隔时间
 )
 
 var (
-	redisClient *redis.Client
-	ctx         context.Context
+	messageStore *MessageStore
 )
 
 type telegramMessage struct {
@@ -31,8 +27,8 @@ type telegramMessage struct {
 	NextTime      time.Time `json:"nextTime"`      //下一次重试的时间
 }
 
-func AutoSendMessage(max int, client *redis.Client) {
-	redisClient = client
+func AutoSendMessage(max int) {
+	messageStore = NewMessageStore()
 
 	// 创建一个容量为max的goroutine池
 	p, _ := ants.NewPoolWithFunc(max, func(i interface{}) {
@@ -56,13 +52,19 @@ func AutoSendMessage(max int, client *redis.Client) {
 	defer p.Release()
 
 	for {
-		cmd := redisClient.BLPop(ctx, 0, telegramSendMessageKey) // redisClient.BLPop(ctx, telegramSendMessageKey, 0)
-		if cmd.Err() != nil {
+
+		// 根据使用的存储类型选择不同的方法
+		jsonStr, cmdErr := messageStore.BLPop()
+
+		if cmdErr != nil {
+			time.Sleep(time.Second * 3)
+			continue
+		}
+		if jsonStr == "" {
 			time.Sleep(time.Second * 3)
 			continue
 		}
 
-		jsonStr := cmd.Val()[1]
 		var cb telegramMessage
 		if err := json.Unmarshal([]byte(jsonStr), &cb); err != nil {
 			BotLog.Printf("[telegram_send_message] json Unmarshal, origin : %s ,err :%v \n", jsonStr, err)
@@ -81,19 +83,19 @@ func AutoSendMessage(max int, client *redis.Client) {
 }
 
 func putRetryCache(cb *telegramMessage, str string, isTimeNow bool) (err error) {
+	// 根据使用的存储类型选择不同的方法
+
 	if !isTimeNow {
-		return redisClient.RPush(ctx, telegramSendMessageKey, str).Err()
+		return messageStore.RPush(str)
 	}
 	cbByte, err := json.Marshal(cb)
 	if err != nil {
-		return redisClient.RPush(ctx, telegramSendMessageKey, str).Err()
+		return messageStore.RPush(str)
 	}
-
-	return redisClient.RPush(ctx, telegramSendMessageKey, string(cbByte)).Err()
+	return messageStore.RPush(string(cbByte))
 }
 
 func sendMessage(cb *telegramMessage) error {
-
 	bot := NewBot()
 	if bot == nil {
 		BotLog.Println("[telegram_send_message] telegram bot is nil")

@@ -246,7 +246,7 @@ func (b *Bot) ProcessUpdate(update *Update) error {
 	// Parse command from message
 	command := b.parse.ParseCommand(update.Message.Text, update.Message)
 	if command == nil {
-		return nil
+		return NewError(CommandNotFoundError)
 	}
 	return command.Handler(b)
 }
@@ -266,7 +266,7 @@ func (b *Bot) ProcessMessage(message *Message) error {
 	// Parse command from message
 	command := b.parse.ParseCommand(commandText, message)
 	if command == nil {
-		return nil
+		return NewError(CommandNotFoundError)
 	}
 
 	return command.Handler(b)
