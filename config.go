@@ -21,8 +21,16 @@ func RegisterBot(token string, isDefault bool, params ...Options) error {
 	if isDefault {
 		DefaultToken = token
 	}
-	params = append(params, WithToken(token))
-	botCache[token] = NewBotWidthOptions(params...)
+	ops := []Options{
+		WithToken(token),
+		WithParse(NewCommandParser("/")),
+	}
+	ops = append(ops, params...)
+	bot, err := NewBotWidthOptions(ops...)
+	if err != nil {
+		return err
+	}
+	botCache[token] = bot
 	return nil
 }
 
@@ -46,6 +54,7 @@ type Options func(*Bot) error
 func WithToken(token string) Options {
 	return func(b *Bot) error {
 		b.token = token
+		b.baseURL = fmt.Sprintf("https://api.telegram.org/bot%s", token)
 		return nil
 	}
 }
@@ -67,7 +76,7 @@ func WithParse(parse *CommandParser) Options {
 	}
 }
 
-func NewBotWidthOptions(ops ...Options) *Bot {
+func NewBotWidthOptions(ops ...Options) (*Bot, error) {
 
 	options := &Bot{
 		client: &http.Client{
@@ -78,10 +87,9 @@ func NewBotWidthOptions(ops ...Options) *Bot {
 	for _, op := range ops {
 		if err := op(options); err != nil {
 			BotLog.Printf("telegram机器人初始化失败，errpr:%v \n", err)
-			return nil
+			return nil, err
 		}
 	}
-	options.baseURL = fmt.Sprintf("https://api.telegram.org/bot%s", options.token)
 
-	return options
+	return options, nil
 }
