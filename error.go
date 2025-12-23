@@ -1,6 +1,7 @@
 package telegram
 
 const (
+	InvalidConfig         = 10400
 	RequestFailure        = 10401 //请求失败
 	TelegramApiError      = 10402
 	TelegramBotError      = 10410
@@ -8,9 +9,11 @@ const (
 	ParseResponseError    = 10412
 	CommandNotFoundError  = 10413
 	IllegalParameterError = 10414
+	MessageTypeError      = 10415
 )
 
 var errorMessage = map[int]string{
+	InvalidConfig:         "Invalid bot config",
 	RequestFailure:        "request failure",
 	TelegramApiError:      "telegram API error",
 	TelegramBotError:      "telegram bot is nil",
@@ -18,6 +21,7 @@ var errorMessage = map[int]string{
 	ParseResponseError:    "failed to parse response",
 	CommandNotFoundError:  "command not found",
 	IllegalParameterError: "illegal parameter",
+	MessageTypeError:      "Unsupported message type",
 }
 
 type Error struct {

@@ -12,7 +12,7 @@ type Command struct {
 	Message   *Message
 }
 
-func (c *Command) Handler(b *Bot) error {
+func (c *Command) Handler(b *BotClient) error {
 	// Run middleware
 	for _, m := range middleware {
 		if err := m(b, c); err != nil {
@@ -29,7 +29,7 @@ func (c *Command) Handler(b *Bot) error {
 }
 
 // CommandHandlerFunc is a function type that implements CommandHandler
-type CommandHandlerFunc func(bot *Bot, command *Command) error
+type CommandHandlerFunc func(bot *BotClient, command *Command) error
 
 var (
 	commands   = make(map[string]CommandHandlerFunc)

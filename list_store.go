@@ -5,8 +5,8 @@ import (
 	"sync"
 )
 
-// MessageStore 是一个内存中的消息队列实现，用于替代 Redis 的 BLPOP 和 RPUSH 操作
-type MessageStore struct {
+// ListStore 是一个内存中的消息队列实现，用于替代 Redis 的 BLPOP 和 RPUSH 操作
+type ListStore struct {
 	queue    *list.List
 	mutex    sync.Mutex
 	cond     *sync.Cond
@@ -14,9 +14,9 @@ type MessageStore struct {
 	closedMu sync.RWMutex
 }
 
-// NewMessageStore 创建一个新的消息存储实例
-func NewMessageStore() *MessageStore {
-	ms := &MessageStore{
+// NewListStore 创建一个新的消息存储实例
+func NewListStore() Store {
+	ms := &ListStore{
 		queue: list.New(),
 	}
 	ms.cond = sync.NewCond(&ms.mutex)
@@ -24,7 +24,7 @@ func NewMessageStore() *MessageStore {
 }
 
 // RPush 将消息推入队列的右侧（尾部），相当于 Redis 的 RPUSH 命令
-func (ms *MessageStore) RPush(value string) error {
+func (ms *ListStore) RPush(value string) error {
 	ms.closedMu.RLock()
 	defer ms.closedMu.RUnlock()
 
@@ -41,7 +41,7 @@ func (ms *MessageStore) RPush(value string) error {
 }
 
 // BLPop 阻塞式地从队列左侧（头部）弹出消息，相当于 Redis 的 BLPOP 命令
-func (ms *MessageStore) BLPop() (string, error) {
+func (ms *ListStore) BLPop() (string, error) {
 	ms.closedMu.RLock()
 	if ms.closed {
 		ms.closedMu.RUnlock()
@@ -88,7 +88,7 @@ func (ms *MessageStore) BLPop() (string, error) {
 }
 
 // Close 关闭消息存储，释放资源并唤醒所有阻塞的操作
-func (ms *MessageStore) Close() error {
+func (ms *ListStore) Close() error {
 	ms.closedMu.Lock()
 	ms.closed = true
 	ms.closedMu.Unlock()
@@ -101,10 +101,10 @@ func (ms *MessageStore) Close() error {
 }
 
 // Size 返回队列中消息的数量
-func (ms *MessageStore) Size() int {
+func (ms *ListStore) Size() int64 {
 	ms.mutex.Lock()
 	defer ms.mutex.Unlock()
-	return ms.queue.Len()
+	return int64(ms.queue.Len())
 }
 
 // MessageStoreClosedError 表示消息存储已关闭的错误

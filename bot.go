@@ -5,11 +5,82 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"time"
 )
 
+// BotClient represents a Telegram bot client
+type BotClient struct {
+	token   string
+	baseURL string
+	parse   *CommandParser
+	client  *http.Client
+}
+
+type Options func(*BotClient) error
+
+func WithToken(token string) Options {
+	return func(b *BotClient) error {
+		b.token = token
+		b.baseURL = fmt.Sprintf("https://api.telegram.org/bot%s", token)
+		return nil
+	}
+}
+
+func WithHook(webhook string) Options {
+	return func(b *BotClient) error {
+		if err := b.SetWebhook(webhook); err != nil {
+			log.Printf("telegram机器人初始化失败，errpr:%+v", err)
+			return err
+		}
+		return nil
+	}
+}
+
+func WithParse(parse *CommandParser) Options {
+	return func(b *BotClient) error {
+		b.parse = parse
+		return nil
+	}
+}
+
+func NewBotWidthOptions(ops ...Options) (*BotClient, error) {
+
+	options := &BotClient{
+		client: &http.Client{
+			Timeout: 30 * time.Second,
+		},
+	}
+
+	for _, op := range ops {
+		if err := op(options); err != nil {
+			botLog.Printf("telegram机器人初始化失败，errpr:%v \n", err)
+			return nil, err
+		}
+	}
+
+	return options, nil
+}
+
+func NewBotClient(token, webhook string) *BotClient {
+	ops := []Options{
+		WithToken(token),
+		WithParse(NewCommandParser("/")),
+	}
+	if webhook != "" {
+		ops = append(ops, WithHook(webhook))
+	}
+
+	bot, err := NewBotWidthOptions(ops...)
+	if err != nil {
+		return nil
+	}
+	return bot
+}
+
 // SendMessage sends a message to a chat
-func (b *Bot) SendMessage(chatID int64, text string) error {
+func (b *BotClient) SendMessage(chatID int64, text string) error {
 
 	params := map[string]interface{}{
 		"chat_id": chatID,
@@ -22,12 +93,12 @@ func (b *Bot) SendMessage(chatID int64, text string) error {
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(respBody, &result); err != nil {
-		BotLog.Printf("failed to parse response: %+v \n", err)
+		botLog.Printf("failed to parse response: %+v \n", err)
 		return NewError(ParseResponseError)
 	}
 
 	if !result["ok"].(bool) {
-		BotLog.Printf("telegram API error: %v \n", result["description"])
+		botLog.Printf("telegram API error: %v \n", result["description"])
 		return NewError(TelegramApiError)
 	}
 
@@ -35,7 +106,7 @@ func (b *Bot) SendMessage(chatID int64, text string) error {
 }
 
 // ReplyMessage replies to a message
-func (b *Bot) ReplyMessage(chatId int64, messageId int, text string) error {
+func (b *BotClient) ReplyMessage(chatId int64, messageId int, text string) error {
 
 	params := map[string]interface{}{
 		"chat_id": chatId,
@@ -51,19 +122,19 @@ func (b *Bot) ReplyMessage(chatId int64, messageId int, text string) error {
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(respBody, &result); err != nil {
-		BotLog.Printf("failed to parse response: %+v \n", err)
+		botLog.Printf("failed to parse response: %+v \n", err)
 		return NewError(ParseResponseError)
 	}
 
 	if !result["ok"].(bool) {
-		BotLog.Printf("telegram API error: %v \n", result["description"])
+		botLog.Printf("telegram API error: %v \n", result["description"])
 		return NewError(TelegramApiError)
 	}
 	return nil
 }
 
 // SendPhoto sends a photo to a chat
-func (b *Bot) SendPhoto(chatID int64, photoURL, caption string) error {
+func (b *BotClient) SendPhoto(chatID int64, photoURL, caption string) error {
 
 	params := map[string]interface{}{
 		"chat_id": chatID,
@@ -80,19 +151,19 @@ func (b *Bot) SendPhoto(chatID int64, photoURL, caption string) error {
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(respBody, &result); err != nil {
-		BotLog.Printf("failed to parse response: %+v \n", err)
+		botLog.Printf("failed to parse response: %+v \n", err)
 		return NewError(ParseResponseError)
 	}
 
 	if !result["ok"].(bool) {
-		BotLog.Printf("telegram API error: %v \n", result["description"])
+		botLog.Printf("telegram API error: %v \n", result["description"])
 		return NewError(TelegramApiError)
 	}
 	return nil
 }
 
 // ForwardMessage forwards a message from one chat to another
-func (b *Bot) ForwardMessage(chatID, fromChatID int64, messageID int) error {
+func (b *BotClient) ForwardMessage(chatID, fromChatID int64, messageID int) error {
 
 	params := map[string]interface{}{
 		"chat_id":      chatID,
@@ -106,19 +177,19 @@ func (b *Bot) ForwardMessage(chatID, fromChatID int64, messageID int) error {
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(respBody, &result); err != nil {
-		BotLog.Printf("failed to parse response: %+v \n", err)
+		botLog.Printf("failed to parse response: %+v \n", err)
 		return NewError(ParseResponseError)
 	}
 
 	if !result["ok"].(bool) {
-		BotLog.Printf("telegram API error: %v \n", result["description"])
+		botLog.Printf("telegram API error: %v \n", result["description"])
 		return NewError(TelegramApiError)
 	}
 	return nil
 }
 
 // CopyMessage copies a message from one chat to another
-func (b *Bot) CopyMessage(chatID, fromChatID int64, messageID int) error {
+func (b *BotClient) CopyMessage(chatID, fromChatID int64, messageID int) error {
 
 	params := map[string]interface{}{
 		"chat_id":      chatID,
@@ -132,19 +203,19 @@ func (b *Bot) CopyMessage(chatID, fromChatID int64, messageID int) error {
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(respBody, &result); err != nil {
-		BotLog.Printf("failed to parse response: %+v \n", err)
+		botLog.Printf("failed to parse response: %+v \n", err)
 		return NewError(ParseResponseError)
 	}
 
 	if !result["ok"].(bool) {
-		BotLog.Printf("telegram API error: %v \n", result["description"])
+		botLog.Printf("telegram API error: %v \n", result["description"])
 		return NewError(TelegramApiError)
 	}
 	return nil
 }
 
 // GetFile gets information about a file by its file_id
-func (b *Bot) GetFile(fileID string) (*File, error) {
+func (b *BotClient) GetFile(fileID string) (*File, error) {
 
 	params := map[string]interface{}{
 		"file_id": fileID,
@@ -160,12 +231,12 @@ func (b *Bot) GetFile(fileID string) (*File, error) {
 	}
 
 	if err := json.Unmarshal(respBody, &result); err != nil {
-		BotLog.Printf("failed to parse response: %+v \n", err)
+		botLog.Printf("failed to parse response: %+v \n", err)
 		return nil, fmt.Errorf("failed to parse response: %v", err)
 	}
 
 	if !result.Ok {
-		BotLog.Printf("telegram API error: %v \n", result.Result)
+		botLog.Printf("telegram API error: %v \n", result.Result)
 		return nil, fmt.Errorf("telegram API error: %v", result.Result)
 	}
 
@@ -173,12 +244,12 @@ func (b *Bot) GetFile(fileID string) (*File, error) {
 }
 
 // GetFileURL returns the full URL to download a file
-func (b *Bot) GetFileURL(file *File) string {
+func (b *BotClient) GetFileURL(file *File) string {
 	return fmt.Sprintf("https://api.telegram.org/file/bot%s/%s", b.token, file.FilePath)
 }
 
 // SendMediaGroup sends a group of photos as an album
-func (b *Bot) SendMediaGroup(chatID int64, media []InputMedia) error {
+func (b *BotClient) SendMediaGroup(chatID int64, media []InputMedia) error {
 
 	params := map[string]interface{}{
 		"chat_id": chatID,
@@ -191,19 +262,19 @@ func (b *Bot) SendMediaGroup(chatID int64, media []InputMedia) error {
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(respBody, &result); err != nil {
-		BotLog.Printf("failed to parse response: %+v \n", err)
+		botLog.Printf("failed to parse response: %+v \n", err)
 		return NewError(ParseResponseError)
 	}
 
 	if !result["ok"].(bool) {
-		BotLog.Printf("telegram API error: %v \n", result["description"])
+		botLog.Printf("telegram API error: %v \n", result["description"])
 		return NewError(TelegramApiError)
 	}
 	return nil
 }
 
 // GetUpdates retrieves updates from the bot
-func (b *Bot) GetUpdates(offset int64, limit int) ([]Update, error) {
+func (b *BotClient) GetUpdates(offset int64, limit int) ([]Update, error) {
 
 	params := map[string]interface{}{
 		"offset": offset,
@@ -220,19 +291,19 @@ func (b *Bot) GetUpdates(offset int64, limit int) ([]Update, error) {
 	}
 
 	if err := json.Unmarshal(respBody, &result); err != nil {
-		BotLog.Printf("failed to parse response: %+v \n", err)
+		botLog.Printf("failed to parse response: %+v \n", err)
 		return nil, fmt.Errorf("failed to parse response: %v", err)
 	}
 
 	if !result.Ok {
-		BotLog.Printf("telegram API error: %v \n", result.Result)
+		botLog.Printf("telegram API error: %v \n", result.Result)
 		return nil, fmt.Errorf("telegram API error")
 	}
 
 	return result.Result, nil
 }
 
-func (b *Bot) ProcessUpdate(update *Update) error {
+func (b *BotClient) ProcessUpdate(update *Update) error {
 	// Only process message updates
 	if update.Message == nil {
 		return nil
@@ -252,7 +323,7 @@ func (b *Bot) ProcessUpdate(update *Update) error {
 }
 
 // ProcessMessage 处理消息并执行相应的命令处理程序
-func (b *Bot) ProcessMessage(message *Message) error {
+func (b *BotClient) ProcessMessage(message *Message) error {
 	// Only process text messages
 	if message.Text == "" && len(message.Photo) == 0 {
 		return nil
@@ -272,17 +343,107 @@ func (b *Bot) ProcessMessage(message *Message) error {
 	return command.Handler(b)
 }
 
-func (b *Bot) doRequest(api string, params map[string]interface{}) (body []byte, err error) {
+// SetWebhook sets the webhook URL for the bot
+func (b *BotClient) SetWebhook(url string) error {
+
+	params := map[string]interface{}{
+		"url": url,
+	}
+	respBody, err := b.doRequest("setWebhook", params)
+	if err != nil {
+		botLog.Printf("[TelegramBot.SetWebhook] 设置webhook异常：  err : %v \n", err)
+		return err
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		botLog.Printf("[TelegramBot.SetWebhook] failed to parse response: %+v \n", err)
+		return NewError(ParseResponseError)
+	}
+
+	if !result["ok"].(bool) {
+		botLog.Printf("[TelegramBot.SetWebhook] telegram API error: %v \n", result["description"])
+		return NewError(TelegramApiError)
+	}
+
+	return nil
+}
+
+// DeleteWebhook removes the webhook integration
+func (b *BotClient) DeleteWebhook() error {
+	reqUrl := fmt.Sprintf("%s/deleteWebhook", b.baseURL)
+
+	resp, err := b.client.Get(reqUrl)
+	if err != nil {
+		return fmt.Errorf("failed to delete webhook: %v", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(respBody))
+	}
+	var result map[string]interface{}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		botLog.Printf("[TelegramBot.DeleteWebhook] failed to parse response: %+v \n", err)
+		return NewError(ParseResponseError)
+	}
+
+	if !result["ok"].(bool) {
+		botLog.Printf("[TelegramBot.DeleteWebhook] telegram API error: %v \n", result["description"])
+		return NewError(TelegramApiError)
+	}
+	return nil
+}
+
+// GetWebhookInfo gets current webhook status
+func (b *BotClient) GetWebhookInfo() (map[string]interface{}, error) {
+
+	url := fmt.Sprintf("%s/getWebhookInfo", b.baseURL)
+
+	resp, err := b.client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get webhook info: %v", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		botLog.Printf("[TelegramBot.GetWebhookInfo] failed to parse response: %+v \n", err)
+		return nil, NewError(ParseResponseError)
+	}
+
+	if !result["ok"].(bool) {
+		botLog.Printf("[TelegramBot.GetWebhookInfo] telegram API error: %v \n", result["description"])
+		return nil, NewError(TelegramApiError)
+	}
+	return result["result"].(map[string]interface{}), nil
+}
+
+func (b *BotClient) doRequest(api string, params map[string]interface{}) (body []byte, err error) {
 
 	reqUrl := fmt.Sprintf("%s/%s", b.baseURL, api)
-	BotLog.Printf("[TelegramBot.Request] 请求地址：%s \n", reqUrl)
+	botLog.Printf("[TelegramBot.Request] 请求地址：%s \n", reqUrl)
 
 	paramStr, _ := json.Marshal(params)
-	BotLog.Printf("[TelegramBot.Request] 请求参数：%s", paramStr)
+	botLog.Printf("[TelegramBot.Request] 请求参数：%s", paramStr)
 
 	req, err := http.NewRequest(http.MethodPost, reqUrl, bytes.NewBuffer(body))
 	if err != nil {
-		BotLog.Printf("[TelegramBot.Request] 创建请求异常：  err : %v \n", err)
+		botLog.Printf("[TelegramBot.Request] 创建请求异常：  err : %v \n", err)
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
 
@@ -290,7 +451,7 @@ func (b *Bot) doRequest(api string, params map[string]interface{}) (body []byte,
 
 	resp, err := b.client.Do(req)
 	if err != nil {
-		BotLog.Printf("[TelegramBot.Request] 发送请求异常：  err : %v \n", err)
+		botLog.Printf("[TelegramBot.Request] 发送请求异常：  err : %v \n", err)
 		return nil, fmt.Errorf("failed to send message: %v", err)
 	}
 	defer resp.Body.Close()
@@ -301,8 +462,8 @@ func (b *Bot) doRequest(api string, params map[string]interface{}) (body []byte,
 
 	body, err = io.ReadAll(resp.Body)
 	if err != nil {
-		BotLog.Printf("[TelegramBot.Request] 读取响应异常：  err : %v \n", err)
+		botLog.Printf("[TelegramBot.Request] 读取响应异常：  err : %v \n", err)
 	}
-	BotLog.Printf("[TelegramBot.Request] 响应参数：%s", string(body))
+	botLog.Printf("[TelegramBot.Request] 响应参数：%s", string(body))
 	return
 }

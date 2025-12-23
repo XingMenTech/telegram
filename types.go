@@ -1,5 +1,14 @@
 package telegram
 
+const (
+	MessageTypeText     = "text"     //文本消息
+	MessageTypeAudio    = "audio"    //语音
+	MessageTypeDocument = "document" //
+	MessageTypeSticker  = "sticker"  //表情
+	MessageTypeVideo    = "video"    //视频
+	MessageTypePhoto    = "photo"    // 图片
+)
+
 // User represents a Telegram user or bot
 type User struct {
 	ID           int64  `json:"id"`

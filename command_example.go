@@ -18,7 +18,7 @@ func ExampleCommandParser() {
 	parser := NewCommandParser("/")
 
 	// Register a simple "hello" command
-	RegisterCommandFunc("hello", func(bot *Bot, command *Command) error {
+	RegisterCommandFunc("hello", func(bot *BotClient, command *Command) error {
 		response := fmt.Sprintf("Hello, %s!", command.Message.From.FirstName)
 		return bot.SendMessage(command.Message.Chat.ID, response)
 	})
@@ -27,7 +27,7 @@ func ExampleCommandParser() {
 	//RegisterCommandFunc("help", parser.DefaultHelpHandler())
 
 	// Register a "echo" command with arguments
-	RegisterCommandFunc("echo", func(bot *Bot, command *Command) error {
+	RegisterCommandFunc("echo", func(bot *BotClient, command *Command) error {
 		if len(command.Arguments) == 0 {
 			return bot.SendMessage(command.Message.Chat.ID, "Usage: /echo <text>")
 		}
@@ -37,14 +37,14 @@ func ExampleCommandParser() {
 	})
 
 	// Add middleware to log commands
-	//Use(func(bot *Bot, command *Command) error {
+	//Use(func(bot *BotClient, command *Command) error {
 	//	log.Printf("Processing command: %s, Arguments: %v", command.Name, command.Arguments)
 	//	// Return true to continue processing
 	//	return nil
 	//})
 
 	// Add middleware to restrict access to certain users
-	//parser.Use(func(bot *Bot, command *Command) bool {
+	//parser.Use(func(bot *BotClient, command *Command) bool {
 	//	// Only allow user with ID 123456 to execute commands
 	//	// Remove or modify this for your needs
 	//	if command.Name == "admin" && command.Message.From.ID != 123456 {
