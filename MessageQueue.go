@@ -22,6 +22,7 @@ var (
 
 type telegramMessage struct {
 	ChatId        int64     `json:"chatId"`
+	MessageId     int       `json:"messageId"`
 	Message       string    `json:"message"`
 	Type          string    `json:"type"`
 	ImgUrl        string    `json:"imgUrl"`
@@ -110,7 +111,7 @@ func (mq *MessageQueue) sendMessage(cb *telegramMessage) error {
 
 	switch cb.Type {
 	case MessageTypeText:
-		return bot.client.SendMessage(cb.ChatId, cb.Message)
+		return bot.client.SendMessage(cb.ChatId, cb.MessageId, cb.Message)
 	case MessageTypePhoto:
 		return bot.client.SendPhoto(cb.ChatId, cb.ImgUrl, cb.Caption)
 	default:
@@ -129,9 +130,10 @@ func (mq *MessageQueue) putRetryCache(cb *telegramMessage, raw string, isTimeNow
 	return mq.store.RPush(string(cbByte))
 }
 
-func PushTextMessage(chatId int64, message string) error {
+func PushTextMessage(chatId int64, messageId int, message string) error {
 	msg := &telegramMessage{
 		ChatId:        chatId,
+		MessageId:     messageId,
 		Message:       message,
 		Type:          MessageTypeText,
 		RetryCount:    0,
@@ -142,9 +144,10 @@ func PushTextMessage(chatId int64, message string) error {
 	return NewBot().queue.store.RPush(string(bytes))
 }
 
-func PushPhotoMessage(chatId int64, imgUrl, caption string) error {
+func PushPhotoMessage(chatId int64, messageId int, imgUrl, caption string) error {
 	msg := &telegramMessage{
 		ChatId:        chatId,
+		MessageId:     messageId,
 		Type:          MessageTypePhoto,
 		ImgUrl:        imgUrl,
 		Caption:       caption,

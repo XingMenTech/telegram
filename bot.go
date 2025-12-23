@@ -80,11 +80,16 @@ func NewBotClient(token, webhook string) *BotClient {
 }
 
 // SendMessage sends a message to a chat
-func (b *BotClient) SendMessage(chatID int64, text string) error {
+func (b *BotClient) SendMessage(chatID int64, messageId int, text string) error {
 
 	params := map[string]interface{}{
 		"chat_id": chatID,
 		"text":    text,
+	}
+	if messageId > 0 {
+		params["reply_parameters"] = map[string]interface{}{
+			"message_id": messageId,
+		}
 	}
 	respBody, err := b.doRequest("sendMessage", params)
 	if err != nil {

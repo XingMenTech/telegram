@@ -20,7 +20,7 @@ func ExampleCommandParser() {
 	// Register a simple "hello" command
 	RegisterCommandFunc("hello", func(bot *BotClient, command *Command) error {
 		response := fmt.Sprintf("Hello, %s!", command.Message.From.FirstName)
-		return bot.SendMessage(command.Message.Chat.ID, response)
+		return bot.SendMessage(command.Message.Chat.ID, command.Message.MessageID, response)
 	})
 
 	// Register a "help" command
@@ -29,11 +29,11 @@ func ExampleCommandParser() {
 	// Register a "echo" command with arguments
 	RegisterCommandFunc("echo", func(bot *BotClient, command *Command) error {
 		if len(command.Arguments) == 0 {
-			return bot.SendMessage(command.Message.Chat.ID, "Usage: /echo <text>")
+			return bot.SendMessage(command.Message.Chat.ID, command.Message.MessageID, "Usage: /echo <text>")
 		}
 
 		response := strings.Join(command.Arguments, " ")
-		return bot.SendMessage(command.Message.Chat.ID, response)
+		return bot.SendMessage(command.Message.Chat.ID, command.Message.MessageID, response)
 	})
 
 	// Add middleware to log commands
