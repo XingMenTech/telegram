@@ -67,3 +67,7 @@ func NewBot() *TelegramBot {
 func NewBotUsing(alias string) *TelegramBot {
 	return botCache[alias]
 }
+
+func (b *TelegramBot) ProcessMessage(message *Message) error {
+	return b.client.ProcessMessage(message)
+}
