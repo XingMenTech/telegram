@@ -462,6 +462,7 @@ func (b *BotClient) doRequest(api string, params map[string]interface{}) (body [
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		botLog.Printf("[TelegramBot.Request] request failed with status %d \n", resp.StatusCode)
 		return nil, fmt.Errorf("request failed with status %d", resp.StatusCode)
 	}
 
