@@ -443,10 +443,10 @@ func (b *BotClient) doRequest(api string, params map[string]interface{}) (body [
 	reqUrl := fmt.Sprintf("%s/%s", b.baseURL, api)
 	botLog.Printf("[TelegramBot.Request] 请求地址：%s \n", reqUrl)
 
-	paramStr, _ := json.Marshal(params)
-	botLog.Printf("[TelegramBot.Request] 请求参数：%s", paramStr)
+	paramBytes, _ := json.Marshal(params)
+	botLog.Printf("[TelegramBot.Request] 请求参数：%s", string(paramBytes))
 
-	req, err := http.NewRequest(http.MethodPost, reqUrl, bytes.NewBuffer(body))
+	req, err := http.NewRequest(http.MethodPost, reqUrl, bytes.NewBuffer(paramBytes))
 	if err != nil {
 		botLog.Printf("[TelegramBot.Request] 创建请求异常：  err : %v \n", err)
 		return nil, fmt.Errorf("failed to create request: %v", err)
