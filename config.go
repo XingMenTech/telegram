@@ -34,7 +34,7 @@ func RegisterBot(config *Config) error {
 	if config.MsgStore != nil {
 		bot.store = config.MsgStore
 		bot.size = 10
-		bot.start()
+		go bot.start()
 		//bot.queue = newMessageQueue(config.MsgStore)
 	}
 
