@@ -19,7 +19,7 @@ type Config struct {
 }
 
 type telegramBot struct {
-	*messageQueue
+	messageQueue
 }
 
 func RegisterBot(config *Config) error {
