@@ -12,24 +12,24 @@ type Command struct {
 	Message   *Message
 }
 
-func (c *Command) Handler(b *BotClient) error {
+func (c *Command) Handler() error {
 	// Run middleware
 	for _, m := range middleware {
-		if err := m(b, c); err != nil {
+		if err := m(c); err != nil {
 			return err
 		}
 	}
 
 	// Find and execute command handler
 	if handler, exists := commands[c.Name]; exists {
-		return handler(b, c)
+		return handler(c)
 	}
 
 	return nil
 }
 
 // CommandHandlerFunc is a function type that implements CommandHandler
-type CommandHandlerFunc func(bot *BotClient, command *Command) error
+type CommandHandlerFunc func(command *Command) error
 
 var (
 	commands   = make(map[string]CommandHandlerFunc)
@@ -47,19 +47,19 @@ func Use(m ...CommandHandlerFunc) {
 }
 
 // CommandParser 负责解析Telegram消息中的命令
-type CommandParser struct {
+type commandParser struct {
 	prefix string
 }
 
 // NewCommandParser 使用指定的命令前缀创建新的命令解析器
-func NewCommandParser(prefix string) *CommandParser {
-	return &CommandParser{
+func newCommandParser(prefix string) *commandParser {
+	return &commandParser{
 		prefix: prefix,
 	}
 }
 
 // ParseCommand 从消息文本中解析命令
-func (cp *CommandParser) ParseCommand(text string, message *Message) *Command {
+func (cp *commandParser) ParseCommand(text string, message *Message) *Command {
 	if !strings.HasPrefix(text, cp.prefix) {
 		return nil
 	}

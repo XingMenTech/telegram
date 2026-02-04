@@ -1,5 +1,10 @@
 package telegram
 
+import (
+	"io"
+	"log"
+)
+
 const (
 	MessageTypeText     = "text"     //文本消息
 	MessageTypeAudio    = "audio"    //语音
@@ -8,6 +13,23 @@ const (
 	MessageTypeVideo    = "video"    //视频
 	MessageTypePhoto    = "photo"    // 图片
 )
+
+type Store interface {
+	RPush(value string) error
+	BLPop() (string, error)
+	Size() int64
+	Close() error
+}
+
+type Log struct {
+	*log.Logger
+}
+
+func NewLog(out io.Writer) *Log {
+	d := new(Log)
+	d.Logger = log.New(out, "[TG]", log.LstdFlags)
+	return d
+}
 
 // User represents a Telegram user or bot
 type User struct {

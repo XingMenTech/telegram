@@ -1,73 +1,91 @@
 package telegram
 
 import (
+	"encoding/json"
 	"os"
+	"time"
 )
 
 var (
 	botLog   = NewLog(os.Stdout)
-	botCache = make(map[string]*TelegramBot)
+	botCache = make(map[string]*telegramBot)
 )
 
 type Config struct {
-	Alias string       `json:"alias" yaml:"alias"`
-	Bot   *BotConfig   `json:"bot" yaml:"bot"`
-	Queue *QueueConfig `json:"queue" yaml:"queue"`
-}
-type BotConfig struct {
-	Token   string `json:"token" yaml:"token"`
-	Webhook string `json:"webhook" yaml:"webhook"`
-}
-type QueueConfig struct {
-	Type  string       `json:"type" yaml:"type"`
-	Redis *RedisConfig `json:"redis" yaml:"redis"`
-}
-type RedisConfig struct {
-	Host     string `json:"host" yaml:"host"`
-	Password string `json:"password" yaml:"password"`
-	DbNum    int    `json:"dbNum" yaml:"dbNum"`
+	Alias    string
+	Token    string
+	Webhook  string
+	MsgStore Store
 }
 
-type TelegramBot struct {
-	client *BotClient
-	queue  *MessageQueue
+type telegramBot struct {
+	*messageQueue
 }
 
 func RegisterBot(config *Config) error {
-	bot := &TelegramBot{}
+	bot := &telegramBot{}
 
-	botConfig := config.Bot
-	if botConfig == nil {
+	if config.Token == "" || config.MsgStore == nil {
 		return NewError(InvalidConfig)
 	}
 
-	bot.client = NewBotClient(botConfig.Token, botConfig.Webhook)
+	bot.client = newBotClient(config.Token, config.Webhook)
 
-	queueConfig := config.Queue
-	if queueConfig != nil {
-		var store Store
-		if queueConfig.Type == "redis" {
-			redisConfig := queueConfig.Redis
-			store = NewRedisStore(redisConfig.Host, redisConfig.Password, redisConfig.DbNum)
-		} else {
-			store = NewListStore()
-		}
-
-		bot.queue = NewMessageQueue(store)
+	if config.MsgStore != nil {
+		bot.store = config.MsgStore
+		bot.size = 10
+		bot.start()
+		//bot.queue = newMessageQueue(config.MsgStore)
 	}
 
 	botCache[config.Alias] = bot
 	return nil
 }
 
-func NewBot() *TelegramBot {
-	return NewBotUsing(`default`)
+func newBot() *telegramBot {
+	return newBotUsing(`default`)
 }
 
-func NewBotUsing(alias string) *TelegramBot {
+func newBotUsing(alias string) *telegramBot {
 	return botCache[alias]
 }
 
-func (b *TelegramBot) ProcessMessage(message *Message) error {
-	return b.client.ProcessMessage(message)
+func (b *telegramBot) ProcessMessage(message *Message) error {
+	return b.client.processMessage(message)
+}
+func (b *telegramBot) PushMessage(message string) error {
+	return b.store.RPush(message)
+}
+
+func ProcessMessage(message *Message) error {
+	return newBot().client.processMessage(message)
+}
+
+func PushTextMessage(chatId int64, messageId int, message string) error {
+	msg := &telegramMessage{
+		ChatId:        chatId,
+		MessageId:     messageId,
+		Message:       message,
+		Type:          MessageTypeText,
+		RetryCount:    0,
+		RetryInterval: RetryInterval,
+		NextTime:      time.Now(),
+	}
+	bytes, _ := json.Marshal(msg)
+	return newBot().PushMessage(string(bytes))
+}
+
+func PushPhotoMessage(chatId int64, messageId int, imgUrl, caption string) error {
+	msg := &telegramMessage{
+		ChatId:        chatId,
+		MessageId:     messageId,
+		Type:          MessageTypePhoto,
+		ImgUrl:        imgUrl,
+		Caption:       caption,
+		RetryCount:    0,
+		RetryInterval: RetryInterval,
+		NextTime:      time.Now(),
+	}
+	bytes, _ := json.Marshal(msg)
+	return newBot().PushMessage(string(bytes))
 }

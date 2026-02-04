@@ -15,25 +15,28 @@ func ExampleCommandParser() {
 	// }
 
 	// Create a new command parser with "/" as the command prefix
-	parser := NewCommandParser("/")
+	parser := newCommandParser("/")
 
 	// Register a simple "hello" command
-	RegisterCommandFunc("hello", func(bot *BotClient, command *Command) error {
+	RegisterCommandFunc("hello", func(command *Command) error {
 		response := fmt.Sprintf("Hello, %s!", command.Message.From.FirstName)
-		return bot.SendMessage(command.Message.Chat.ID, command.Message.MessageID, response)
+		return PushTextMessage(command.Message.Chat.ID, command.Message.MessageID, response)
+		//return bot.SendMessage(command.Message.Chat.ID, command.Message.MessageID, response)
 	})
 
 	// Register a "help" command
 	//RegisterCommandFunc("help", parser.DefaultHelpHandler())
 
 	// Register a "echo" command with arguments
-	RegisterCommandFunc("echo", func(bot *BotClient, command *Command) error {
+	RegisterCommandFunc("echo", func(command *Command) error {
 		if len(command.Arguments) == 0 {
-			return bot.SendMessage(command.Message.Chat.ID, command.Message.MessageID, "Usage: /echo <text>")
+			return PushTextMessage(command.Message.Chat.ID, command.Message.MessageID, "Usage: /echo <text>")
+			//return bot.SendMessage(command.Message.Chat.ID, command.Message.MessageID, "Usage: /echo <text>")
 		}
 
 		response := strings.Join(command.Arguments, " ")
-		return bot.SendMessage(command.Message.Chat.ID, command.Message.MessageID, response)
+		return PushTextMessage(command.Message.Chat.ID, command.Message.MessageID, response)
+		//return bot.SendMessage(command.Message.Chat.ID, command.Message.MessageID, response)
 	})
 
 	// Add middleware to log commands

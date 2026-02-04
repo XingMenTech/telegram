@@ -10,27 +10,27 @@ import (
 	"time"
 )
 
-// BotClient represents a Telegram bot client
-type BotClient struct {
+// botClient represents a Telegram bot client
+type botClient struct {
 	token   string
 	baseURL string
-	parse   *CommandParser
+	parse   *commandParser
 	client  *http.Client
 }
 
-type Options func(*BotClient) error
+type clientOptions func(*botClient) error
 
-func WithToken(token string) Options {
-	return func(b *BotClient) error {
+func withToken(token string) clientOptions {
+	return func(b *botClient) error {
 		b.token = token
 		b.baseURL = fmt.Sprintf("https://api.telegram.org/bot%s", token)
 		return nil
 	}
 }
 
-func WithHook(webhook string) Options {
-	return func(b *BotClient) error {
-		if err := b.SetWebhook(webhook); err != nil {
+func withHook(webhook string) clientOptions {
+	return func(b *botClient) error {
+		if err := b.setWebhook(webhook); err != nil {
 			log.Printf("telegram机器人初始化失败，errpr:%+v", err)
 			return err
 		}
@@ -38,16 +38,16 @@ func WithHook(webhook string) Options {
 	}
 }
 
-func WithParse(parse *CommandParser) Options {
-	return func(b *BotClient) error {
+func withParse(parse *commandParser) clientOptions {
+	return func(b *botClient) error {
 		b.parse = parse
 		return nil
 	}
 }
 
-func NewBotWidthOptions(ops ...Options) (*BotClient, error) {
+func newBotWidthOptions(ops ...clientOptions) (*botClient, error) {
 
-	options := &BotClient{
+	options := &botClient{
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -63,16 +63,16 @@ func NewBotWidthOptions(ops ...Options) (*BotClient, error) {
 	return options, nil
 }
 
-func NewBotClient(token, webhook string) *BotClient {
-	ops := []Options{
-		WithToken(token),
-		WithParse(NewCommandParser("/")),
+func newBotClient(token, webhook string) *botClient {
+	ops := []clientOptions{
+		withToken(token),
+		withParse(newCommandParser("/")),
 	}
 	if webhook != "" {
-		ops = append(ops, WithHook(webhook))
+		ops = append(ops, withHook(webhook))
 	}
 
-	bot, err := NewBotWidthOptions(ops...)
+	bot, err := newBotWidthOptions(ops...)
 	if err != nil {
 		return nil
 	}
@@ -80,7 +80,7 @@ func NewBotClient(token, webhook string) *BotClient {
 }
 
 // SendMessage sends a message to a chat
-func (b *BotClient) SendMessage(chatID int64, messageId int, text string) error {
+func (b *botClient) sendMessage(chatID int64, messageId int, text string) error {
 
 	params := map[string]interface{}{
 		"chat_id": chatID,
@@ -111,7 +111,7 @@ func (b *BotClient) SendMessage(chatID int64, messageId int, text string) error 
 }
 
 // ReplyMessage replies to a message
-func (b *BotClient) ReplyMessage(chatId int64, messageId int, text string) error {
+func (b *botClient) replyMessage(chatId int64, messageId int, text string) error {
 
 	params := map[string]interface{}{
 		"chat_id": chatId,
@@ -139,7 +139,7 @@ func (b *BotClient) ReplyMessage(chatId int64, messageId int, text string) error
 }
 
 // SendPhoto sends a photo to a chat
-func (b *BotClient) SendPhoto(chatID int64, photoURL, caption string) error {
+func (b *botClient) sendPhoto(chatID int64, photoURL, caption string) error {
 
 	params := map[string]interface{}{
 		"chat_id": chatID,
@@ -168,7 +168,7 @@ func (b *BotClient) SendPhoto(chatID int64, photoURL, caption string) error {
 }
 
 // ForwardMessage forwards a message from one chat to another
-func (b *BotClient) ForwardMessage(chatID, fromChatID int64, messageID int) error {
+func (b *botClient) forwardMessage(chatID, fromChatID int64, messageID int) error {
 
 	params := map[string]interface{}{
 		"chat_id":      chatID,
@@ -194,7 +194,7 @@ func (b *BotClient) ForwardMessage(chatID, fromChatID int64, messageID int) erro
 }
 
 // CopyMessage copies a message from one chat to another
-func (b *BotClient) CopyMessage(chatID, fromChatID int64, messageID int) error {
+func (b *botClient) copyMessage(chatID, fromChatID int64, messageID int) error {
 
 	params := map[string]interface{}{
 		"chat_id":      chatID,
@@ -220,7 +220,7 @@ func (b *BotClient) CopyMessage(chatID, fromChatID int64, messageID int) error {
 }
 
 // GetFile gets information about a file by its file_id
-func (b *BotClient) GetFile(fileID string) (*File, error) {
+func (b *botClient) getFile(fileID string) (*File, error) {
 
 	params := map[string]interface{}{
 		"file_id": fileID,
@@ -249,12 +249,12 @@ func (b *BotClient) GetFile(fileID string) (*File, error) {
 }
 
 // GetFileURL returns the full URL to download a file
-func (b *BotClient) GetFileURL(file *File) string {
+func (b *botClient) getFileURL(file *File) string {
 	return fmt.Sprintf("https://api.telegram.org/file/bot%s/%s", b.token, file.FilePath)
 }
 
 // SendMediaGroup sends a group of photos as an album
-func (b *BotClient) SendMediaGroup(chatID int64, media []InputMedia) error {
+func (b *botClient) sendMediaGroup(chatID int64, media []InputMedia) error {
 
 	params := map[string]interface{}{
 		"chat_id": chatID,
@@ -279,7 +279,7 @@ func (b *BotClient) SendMediaGroup(chatID int64, media []InputMedia) error {
 }
 
 // GetUpdates retrieves updates from the bot
-func (b *BotClient) GetUpdates(offset int64, limit int) ([]Update, error) {
+func (b *botClient) getUpdates(offset int64, limit int) ([]Update, error) {
 
 	params := map[string]interface{}{
 		"offset": offset,
@@ -308,7 +308,7 @@ func (b *BotClient) GetUpdates(offset int64, limit int) ([]Update, error) {
 	return result.Result, nil
 }
 
-func (b *BotClient) ProcessUpdate(update *Update) error {
+func (b *botClient) processUpdate(update *Update) error {
 	// Only process message updates
 	if update.Message == nil {
 		return nil
@@ -324,11 +324,11 @@ func (b *BotClient) ProcessUpdate(update *Update) error {
 	if command == nil {
 		return NewError(CommandNotFoundError)
 	}
-	return command.Handler(b)
+	return command.Handler()
 }
 
 // ProcessMessage 处理消息并执行相应的命令处理程序
-func (b *BotClient) ProcessMessage(message *Message) error {
+func (b *botClient) processMessage(message *Message) error {
 	// Only process text messages
 	if message.Text == "" && len(message.Photo) == 0 {
 		return nil
@@ -345,11 +345,11 @@ func (b *BotClient) ProcessMessage(message *Message) error {
 		return NewError(CommandNotFoundError)
 	}
 
-	return command.Handler(b)
+	return command.Handler()
 }
 
 // SetWebhook sets the webhook URL for the bot
-func (b *BotClient) SetWebhook(url string) error {
+func (b *botClient) setWebhook(url string) error {
 
 	params := map[string]interface{}{
 		"url": url,
@@ -375,7 +375,7 @@ func (b *BotClient) SetWebhook(url string) error {
 }
 
 // DeleteWebhook removes the webhook integration
-func (b *BotClient) DeleteWebhook() error {
+func (b *botClient) deleteWebhook() error {
 	reqUrl := fmt.Sprintf("%s/deleteWebhook", b.baseURL)
 
 	resp, err := b.client.Get(reqUrl)
@@ -406,7 +406,7 @@ func (b *BotClient) DeleteWebhook() error {
 }
 
 // GetWebhookInfo gets current webhook status
-func (b *BotClient) GetWebhookInfo() (map[string]interface{}, error) {
+func (b *botClient) getWebhookInfo() (map[string]interface{}, error) {
 
 	url := fmt.Sprintf("%s/getWebhookInfo", b.baseURL)
 
@@ -438,7 +438,7 @@ func (b *BotClient) GetWebhookInfo() (map[string]interface{}, error) {
 	return result["result"].(map[string]interface{}), nil
 }
 
-func (b *BotClient) doRequest(api string, params map[string]interface{}) (body []byte, err error) {
+func (b *botClient) doRequest(api string, params map[string]interface{}) (body []byte, err error) {
 
 	reqUrl := fmt.Sprintf("%s/%s", b.baseURL, api)
 	botLog.Printf("[TelegramBot.Request] 请求地址：%s \n", reqUrl)
